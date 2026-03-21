@@ -1,0 +1,13 @@
+{
+  "agent_name": "planner-agent",
+  "description": "Analyzes overarching objectives and formulates structured execution plans.",
+  "competencies": [
+    "strategic-planning",
+    "task-decomposition",
+    "dependency-mapping"
+  ],
+  "supported_skills": [
+    "skill-aware-planning",
+    "workflow-design"
+  ]
+}

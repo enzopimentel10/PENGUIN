@@ -1,0 +1,7 @@
+{
+    "task_id": "pure-orch-test",
+    "objective": "List the contents of the workspace/artifacts directory and create a file named 'orch_test.txt' containing 'Pure Orchestration' in it.",
+    "payload": {
+        "instruction": "List workspace/artifacts/ and create orch_test.txt with 'Pure Orchestration'"
+    }
+}

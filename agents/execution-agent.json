@@ -1,0 +1,13 @@
+{
+  "agent_name": "execution-agent",
+  "description": "Executes atomic tasks according to the generated plan.",
+  "competencies": [
+    "task-execution",
+    "automation",
+    "script-running"
+  ],
+  "supported_skills": [
+    "shell-commands",
+    "python-scripts"
+  ]
+}

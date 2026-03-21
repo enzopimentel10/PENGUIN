@@ -1,0 +1,5 @@
+{
+    "id": "multi-step-test",
+    "description": "Create a Python script that prints Hello World and save it to a file",
+    "status": "pending"
+}

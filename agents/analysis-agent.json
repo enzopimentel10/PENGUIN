@@ -1,0 +1,11 @@
+{
+  "agent_name": "analysis-agent",
+  "description": "Analyzes task objectives and provides technical insights.",
+  "competencies": [
+    "objective-analysis",
+    "technical-evaluation"
+  ],
+  "supported_skills": [
+    "codebase-investigation"
+  ]
+}
