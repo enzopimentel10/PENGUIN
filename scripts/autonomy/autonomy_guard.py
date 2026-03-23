@@ -14,7 +14,7 @@ class AutonomyGuard:
     def __init__(self):
         self.risk_evaluator = RiskEvaluator()
         self.log_file = os.path.join(project_root, "workspace", "logs", "autonomy.log")
-        self.max_execution_steps = 10
+        self.max_execution_steps = 100
         self.step_counter = {} # session_id -> count
 
     def _log_decision(self, action: str, params: Dict[str, Any], risk_level: str, decision: str, reasoning: str):

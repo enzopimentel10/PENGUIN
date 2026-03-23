@@ -1,4 +1,6 @@
-from typing import Dict, Any, Optional
+import json
+import re
+from typing import Dict, Any, List, Optional
 
 class EvaluationResult:
     def __init__(self, action: str, feedback: str):
@@ -6,9 +8,53 @@ class EvaluationResult:
         self.feedback = feedback
 
 class ResultEvaluator:
+    """
+    Strict evaluator: a node is only marked complete when the LLM returns
+    an explicit JSON block containing {"status": "completed"} (or "complete").
+    Loose keyword detection is intentionally removed.
+    """
+
+    _COMPLETED_VALUES = {"completed", "complete"}
+
+    # -------------------------------------------------------------------
+    # helpers
+    # -------------------------------------------------------------------
+    @staticmethod
+    def _extract_json_blocks(text: str) -> List[dict]:
+        """Return all valid JSON objects found inside a raw string."""
+        blocks: List[dict] = []
+        for match in re.finditer(r"\{[^{}]*\}", text):
+            try:
+                blocks.append(json.loads(match.group()))
+            except (json.JSONDecodeError, ValueError):
+                continue
+        return blocks
+
+    def _has_explicit_completion(self, output: Any) -> bool:
+        """
+        Returns True ONLY if:
+          • output is a dict with output["status"] in {"completed", "complete"}, OR
+          • output is a string containing a JSON block like {"status": "completed"}
+        """
+        # --- dict output (already parsed) ---
+        if isinstance(output, dict):
+            return str(output.get("status", "")).lower() in self._COMPLETED_VALUES
+
+        # --- string output — look for embedded JSON ---
+        if isinstance(output, str):
+            for block in self._extract_json_blocks(output):
+                if str(block.get("status", "")).lower() in self._COMPLETED_VALUES:
+                    return True
+
+        return False
+
+    # -------------------------------------------------------------------
+    # public API
+    # -------------------------------------------------------------------
     def evaluate(self, node_id: str, results: Dict[str, Any]) -> EvaluationResult:
         """
-        Analyzes the execution result of a node and returns an action and feedback.
+        Analyzes the execution result of a node.
+        Completion requires an explicit JSON status — never keyword guessing.
         """
         if not results:
             return EvaluationResult("retry", f"Node {node_id} produced no results.")
@@ -18,30 +64,26 @@ class ResultEvaluator:
 
         if status == "failed":
             return EvaluationResult("retry", f"Execution failed for node {node_id}.")
-        
+
         if not output:
             return EvaluationResult("retry", f"Node {node_id} produced an empty output.")
 
-        # Logic to decide between 'continue' and 'complete'
-        output_str = str(output)
-        
-        # Check for JSON "status": "complete"
-        if isinstance(output, dict) and output.get("status") == "complete":
-             return EvaluationResult("complete", f"Node {node_id} marked as complete via status field.")
-             
-        # Legacy checks or fallback
-        if "TASK_COMPLETE" in output_str or "FINAL_ANSWER" in output_str:
-            return EvaluationResult("complete", f"Node {node_id} marked as complete via keyword.")
-        
-        # If it's a success but doesn't have the completion flag, and we want autonomous iteration,
-        # we can return 'continue' if it performed a skill.
+        # ── Strict completion gate ──────────────────────────────────
+        if self._has_explicit_completion(output):
+            return EvaluationResult(
+                "complete",
+                f"Node {node_id} completed — explicit JSON status found.",
+            )
+
+        # ── The node produced output but no completion signal ───────
         if isinstance(output, dict) and "skill_executions" in output:
-             return EvaluationResult("continue", f"Node {node_id} executed skills. Continuing for next steps.")
+            return EvaluationResult(
+                "continue",
+                f"Node {node_id} executed skills. Continuing for next steps.",
+            )
 
-        if status == "success":
-             # If it's a raw string and we haven't found a completion flag, 
-             # we might want to continue to ask for the next step, 
-             # but to avoid infinite loops with raw text, we'll mark it complete unless it looks like an action.
-             return EvaluationResult("complete", f"Node {node_id} execution successful (default to complete).")
-
-        return EvaluationResult("refine", f"Node {node_id} result is ambiguous. Status: {status}")
+        # Default: the node is NOT complete — keep iterating.
+        return EvaluationResult(
+            "continue",
+            f"Node {node_id} produced output but no explicit completion signal.",
+        )

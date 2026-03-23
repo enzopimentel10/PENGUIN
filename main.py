@@ -40,8 +40,23 @@ def main():
 
     # 2. Graph Builder
     print(f"\n[*] PHASE 2: BUILDING TASK GRAPH...")
-    builder = GraphBuilder(session_dir)
-    graph_file = builder.build_graph(plan_file)
+    
+    # Try to extract task_id to check if graph exists
+    task_id = None
+    try:
+        with open(plan_file, 'r', encoding='utf-8') as f:
+            task_id = json.load(f).get("task_id")
+    except:
+        pass
+        
+    expected_graph = os.path.join(session_dir, f"{task_id}_graph.json") if task_id else None
+    
+    if expected_graph and os.path.exists(expected_graph):
+        print(f"[*] Resuming from existing task graph: {expected_graph}")
+        graph_file = expected_graph
+    else:
+        builder = GraphBuilder(session_dir)
+        graph_file = builder.build_graph(plan_file)
     
     if not graph_file:
         print("[!] Graph building failed. Aborting.")
